@@ -43,16 +43,16 @@ using PyCall
 
 
 fig2 = figure("Line Collection Example")
-ax = PyPlot.axes(xlim = (-R,R),ylim=(-R,R))
+ax = PyPlot.axes(xlim = (-R-2,R+2),ylim=(-R-2,R+2))
 
 # plot circle 
-plot(R*cos.(theta),R*sin.(theta),ls="--",color=[169/255,169/255,169/255])
-plot(neuronscoordinates[:,indexneuroncenter][1].+radiuscircle.*cos.(theta),neuronscoordinates[:,indexneuroncenter][2].+radiuscircle.*sin.(theta),linewidth=0.5,color="r")
+plot(R*cos.(theta),R*sin.(theta),color="dimgray",zorder=1,lw=2)
+plot(neuronscoordinates[:,indexneuroncenter][1].+radiuscircle.*cos.(theta),neuronscoordinates[:,indexneuroncenter][2].+radiuscircle.*sin.(theta),linewidth=2,color="r")
 
 pcolormesh(x,x,weightstoindexneurons)
 colorbar()
-
-savefig("Eigenvector$(indexvector).png")
+ax[:set_axis_off]()
+#savefig("Eigenvector$(indexvector).png")
 show()
 
 #This works fine
