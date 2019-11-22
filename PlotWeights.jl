@@ -1,7 +1,7 @@
 # plot Weights 
 
 
-indexneuroncenter=1; # index of the circle location 
+indexneuroncenter=100; # index of the circle location 
 # establish the grid of points in the pool
 steps=1;
 x=[-R+(steps)*(k-1) for k=1:(2*R/steps+1)];
@@ -43,7 +43,7 @@ using PyCall
 
 
 fig2 = figure("Line Collection Example")
-ax = PyPlot.axes(xlim = (-R-2,R+2),ylim=(-R-2,R+2))
+ax = PyPlot.axes(xlim = (-R-4,R+4),ylim=(-R-4,R+4))
 
 # plot circle 
 plot(R*cos.(theta),R*sin.(theta),color="dimgray",zorder=1,lw=2)
