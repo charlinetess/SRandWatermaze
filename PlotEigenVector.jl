@@ -1,6 +1,6 @@
 # Plot one eigenvector 
 #for 
-indexvector=10
+indexvector=2
 
 #indexvector=9; # index of the vector we want to plot 
 clf()
@@ -35,7 +35,7 @@ end
 
 
 
-theta=0:pi/50:2pi;
+theta=0:pi/50:2pi+pi/50;
 
 
 

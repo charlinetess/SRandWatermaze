@@ -1,7 +1,7 @@
 # plot Weights 
 
 
-indexneuroncenter=100; # index of the circle location 
+indexneuroncenter=20; # index of the circle location 
 # establish the grid of points in the pool
 steps=1;
 x=[-R+(steps)*(k-1) for k=1:(2*R/steps+1)];
@@ -52,7 +52,9 @@ plot(neuronscoordinates[:,indexneuroncenter][1].+radiuscircle.*cos.(theta),neuro
 pcolormesh(x,x,weightstoindexneurons)
 colorbar()
 ax[:set_axis_off]()
-#savefig("Eigenvector$(indexvector).png")
+savefig("Eigenvectortest$(indexneuroncenter).png")
+
+
 show()
 
 #This works fine

@@ -1,6 +1,6 @@
 # plot states with reward location and 
 
-theta=0:pi/50:2pi;
+theta=0:pi/50:2pi+pi/50;
 
 
 
