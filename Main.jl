@@ -1,5 +1,18 @@
 using LightGraphs
 using LinearAlgebra
+# activation function
+function activation(g,x)
+    return g*max(0.0,x)
+end
+
+
+function complexactivation(x)
+    return log(1+exp(x))
+end
+
+
+
+
 
 R= 100; # Radius of the circle in cm
 r=5;# Radius of the platform  in cm
@@ -7,12 +20,9 @@ r=5;# Radius of the platform  in cm
 sigma=2.5; # widths of the bump to compute the probability transition, in case th eprobability transition is a exonential transform of the distances between points 
 gamma=1; # discount factor
 
-
 numberofneurons=500; # number of neurons 
-
 numberofinputs=30; # number of inputs
-
-numberofneighbours=8; # Is the probability distribution concerns only the nearest neighbours and is 0 elsewhere 
+# numberofneighbours=8; # Is the probability distribution concerns only the nearest neighbours and is 0 elsewhere 
 
 ## Create points equally distant throughout the environment 
 numberofstates=1000; # number of points 
@@ -126,21 +136,15 @@ for i=1:numberofstates
         P[i,:]=exp.(-P[i,:].^2/(2*sigma^2))./sum(exp.(-P[i,:].^2/(2*sigma^2))); # normalize it to obtain a probability distribution
 end
 
-
-
-
 eigenvalues=eigvals(P);
 eigenvaluesbis=sort(eigenvalues,  rev=true);
-
 # order eigenvectors
 ordering=[findall(x->eigenvaluesbis[k]==x,eigenvalues)[1] for k in 1:numberofstates]; # 
-
 # check that we got this right :
 if !(eigenvaluesbis==eigenvalues[ordering])
     println("something is wrong with the order")
     #break
 end
-
 
 # diagonalise matrix :
 eigenvectors=eigvecs(P); # obtain eigenvector
@@ -154,18 +158,6 @@ neuronscoordinates=coordstates[:,indexneurons];
 
 indexinputs=sort(unique([rand(1:numberofstates) for k=1:numberofinputs]));
 numberofinputs=length(indexinputs);
-
-
-# activation function
-function activation(g,x)
-    return g*max(0.0,x)
-end
-
-
-function complexactivation(x)
-    return log(1+exp(x))
-end
-
 
 scalevalue=ones(length(eigenvaluesbis[2:end]))./sqrt.((ones(length(eigenvaluesbis[2:end]))-gamma.*eigenvaluesbis[2:end])); # scaling factor to create the new coordinates, exclude the first one that is 1 to avoid problems with the computation
 
