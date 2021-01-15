@@ -1,13 +1,16 @@
 using LightGraphs
 using LinearAlgebra
-
 using PyPlot
 using Colors
 using PyCall
+using LaTeXStrings
+
 @pyimport numpy as np
 @pyimport matplotlib.patches as patch
 
+# potential param to play with q=$(q)_$(k)_g=$(g)_alpha=$(alpha)_freeparam=$(freeparameter)epsilon=_$(epsilon) 
 
+# first trial on 3 param : sigma, q, and freeparameter 
 sigmarange=[2.5 10 ];
 qrange= [4 40];
 freeparamrange=[1 2 ]; # option 1 depends on the value of the other eigenvalues, option 2 doesnt 
@@ -15,7 +18,6 @@ freeparamrange=[1 2 ]; # option 1 depends on the value of the other eigenvalues,
 R= 100; # Radius of the circle in cm
 r=5;# Radius of the platform  in cm
 # parameters :
-
 gamma=1; # discount factor
 
 numberofneurons=500; # number of neurons 
@@ -26,7 +28,6 @@ numberofinputs=30; # number of inputs
 numberofstates=1000; # number of points 
 
 ## INIT ACTIVITY :
-
 # timestep
 dt=0.001; # timestep in seconds
 tau=1; # time constant of neuron in second
@@ -97,240 +98,362 @@ end
 
 
 for sigma in sigmarange
-for q in qrange 
-for freeparam in freeparamrange 
+	for q in qrange 
+		for freeparam in freeparamrange 
+		# 	
+		# 	
+		# 	
+		# 	
+		# 	 .gP"Ya `7MMpMMMb.`7M'   `MF'
+		# 	,M'   Yb  MM    MM  VA   ,V
+		# 	8M""""""  MM    MM   VA ,V
+		# 	YM.    ,  MM    MM    VVV
+		# 	 `Mbmmd'.JMML  JMML.   W
+		# 	
+		# 	
 
-# 	
-# 	
-# 	
-# 	
-# 	 .gP"Ya `7MMpMMMb.`7M'   `MF'
-# 	,M'   Yb  MM    MM  VA   ,V
-# 	8M""""""  MM    MM   VA ,V
-# 	YM.    ,  MM    MM    VVV
-# 	 `Mbmmd'.JMML  JMML.   W
-# 	
-# 	
+		# first trial we consider an exponential transformation of the distances :
+		P=zeros(numberofstates,numberofstates);
+		for i=1:numberofstates
+		   for j=1:numberofstates
+		        P[i,j]=sqrt(sum((coordstates[:,i].-coordstates[:,j]).^2)); # compute the euclidean distance between edges 
+		   end
+		        P[i,:]=exp.(-P[i,:].^2/(2*sigma^2))./sum(exp.(-P[i,:].^2/(2*sigma^2))); # normalize it to obtain a probability distribution
+		end
 
-# first trial we consider an exponential transformation of the distances :
-P=zeros(numberofstates,numberofstates);
-for i=1:numberofstates
-   for j=1:numberofstates
+		eigenvalues=eigvals(P);
+		eigenvaluesbis=sort(eigenvalues,  rev=true);
+		# order eigenvectors
+		ordering=[findall(x->eigenvaluesbis[k]==x,eigenvalues)[1] for k in 1:numberofstates]; # 
+		# check that we got this right :
+		if !(eigenvaluesbis==eigenvalues[ordering])
+		    println("something is wrong with the order")
+		    #break
+		end
 
-        P[i,j]=sqrt(sum((coordstates[:,i].-coordstates[:,j]).^2)); # compute the euclidean distance between edges 
-   end
-        P[i,:]=exp.(-P[i,:].^2/(2*sigma^2))./sum(exp.(-P[i,:].^2/(2*sigma^2))); # normalize it to obtain a probability distribution
-end
+		# diagonalise matrix :
+		eigenvectors=eigvecs(P); # obtain eigenvector
+		eigentest=eigenvectors[:,ordering]; # ordered by order of growing eigenvalue
 
-eigenvalues=eigvals(P);
-eigenvaluesbis=sort(eigenvalues,  rev=true);
-# order eigenvectors
-ordering=[findall(x->eigenvaluesbis[k]==x,eigenvalues)[1] for k in 1:numberofstates]; # 
-# check that we got this right :
-if !(eigenvaluesbis==eigenvalues[ordering])
-    println("something is wrong with the order")
-    #break
-end
+		# define neurons 
+		indexneurons=sort(unique([rand(1:numberofstates) for k=1:numberofneurons]));
+		numberofneurons=length(indexneurons); # update the new number of neurons 
 
-# diagonalise matrix :
-eigenvectors=eigvecs(P); # obtain eigenvector
-eigentest=eigenvectors[:,ordering]; # ordered by order of growing eigenvalue
+		neuronscoordinates=coordstates[:,indexneurons];
 
-# define neurons 
-indexneurons=sort(unique([rand(1:numberofstates) for k=1:numberofneurons]));
-numberofneurons=length(indexneurons); # update the new number of neurons 
+		indexinputs=sort(unique([rand(1:numberofstates) for k=1:numberofinputs]));
+		numberofinputs=length(indexinputs);
 
-neuronscoordinates=coordstates[:,indexneurons];
+		scalevalue=ones(length(eigenvaluesbis[2:end]))./sqrt.((ones(length(eigenvaluesbis[2:end]))-gamma.*eigenvaluesbis[2:end])); # scaling factor to create the new coordinates, exclude the first one that is 1 to avoid problems with the computation
+		########### Play on the free parameter                                   .JMML.
+		if freeparam==1 # if option 1 we use 
+			freeparameter=sqrt(1.2*(1-gamma*eigenvaluesbis[2])^(-1)); # testing different ranges of freeparameter
+			# freeparameter=scalevalue[1]*1.5;
+		elseif freeparam==2 # if option 2 we use 
+			freeparameter=0.001;
+		end 
 
-indexinputs=sort(unique([rand(1:numberofstates) for k=1:numberofinputs]));
-numberofinputs=length(indexinputs);
+		newscalevalue=vcat(freeparameter, scalevalue); # changing the first coefficient as being the free parameter to control activity 
+		newmatrix=Diagonal(newscalevalue); # creating a diagonal matrix with it to be able to multiply each column (=eigenvector) by the right value 
+		matrixpoints=eigentest*newmatrix; # obtaining new coordinates for the points 
+		# Now we need to normalise each column to obtain the neurons coordinates 
+		factornorm=Diagonal([1/norm(matrixpoints[k,:]) for k in 1:size(matrixpoints,1) ]); # taking the norms of the rows and making a diagonal out of it 
+		matrixneurons=factornorm*matrixpoints; # new coordinates for neurons, the norm of each vector should be 1 now 
+		# each row is one neuron in the order, each column are their coordinate along each eigenvectors direction
+		neuronsencodingvector=matrixneurons[indexneurons,1:q]; # coordinates of the neurons 
+		# each row is one input in the order, each column are their coordinate along each eigenvectors direction
+		inputsencodingvectorbis=zeros(size(matrixpoints[indexinputs,1:q],2),size(matrixpoints[indexinputs,1:q],1))
+		inputsencodingvector=transpose!(inputsencodingvectorbis,matrixpoints[indexinputs,1:q]);
+		# 	
+		# 	                           ,,            ,,
+		# 	                           db          `7MM        mm
+		# 	                                         MM        MM
+		# 	`7M'    ,A    `MF'.gP"Ya `7MM  .P"Ybmmm  MMpMMMb.mmMMmm ,pP"Ybd
+		# 	  VA   ,VAA   ,V ,M'   Yb  MM :MI  I8    MM    MM  MM   8I   `"
+		# 	   VA ,V  VA ,V  8M""""""  MM  WmmmP"    MM    MM  MM   `YMMMa.
+		# 	    VVV    VVV   YM.    ,  MM 8M         MM    MM  MM   L.   I8
+		# 	     W      W     `Mbmmd'.JMML.YMMMMMb .JMML  JMML.`MbmoM9mmmP'
+		# 	                              6'     dP
+		# 	                              Ybmmmd'
 
-scalevalue=ones(length(eigenvaluesbis[2:end]))./sqrt.((ones(length(eigenvaluesbis[2:end]))-gamma.*eigenvaluesbis[2:end])); # scaling factor to create the new coordinates, exclude the first one that is 1 to avoid problems with the computation
-########### Play on the free parameter                                   .JMML.
-if freeparam==1 # if option 1 we use 
-	freeparameter=sqrt(1.2*(1-gamma*eigenvaluesbis[2])^(-1)); # testing different ranges of freeparameter
-	# freeparameter=scalevalue[1]*1.5;
-elseif freeparam==2 # if option 2 we use 
-	freeparameter=0.001;
-end 
+		# to obtain the decoding weights, necessity to input different input randomnly scattered through the environment and then compute the resulting steady state activity 
+		# define vector of activities of the neurons:
+		global totalactivities
+		#totalactivities=activation.(g,neuronsencodingvector*inputsencodingvector); # we are storing the activities to compute pseudo inverse blabla
+		totalactivities=complexactivation.(neuronsencodingvector*inputsencodingvector); # we are storing the activities to compute pseudo inverse blabla
 
-newscalevalue=vcat(freeparameter, scalevalue); # changing the first coefficient as being the free parameter to control activity 
-newmatrix=Diagonal(newscalevalue); # creating a diagonal matrix with it to be able to multiply each column (=eigenvector) by the right value 
-matrixpoints=eigentest*newmatrix; # obtaining new coordinates for the points 
-# Now we need to normalise each column to obtain the neurons coordinates 
-factornorm=Diagonal([1/norm(matrixpoints[k,:]) for k in 1:size(matrixpoints,1) ]); # taking the norms of the rows and making a diagonal out of it 
-matrixneurons=factornorm*matrixpoints; # new coordinates for neurons, the norm of each vector should be 1 now 
-# each row is one neuron in the order, each column are their coordinate along each eigenvectors direction
-neuronsencodingvector=matrixneurons[indexneurons,1:q]; # coordinates of the neurons 
-# each row is one input in the order, each column are their coordinate along each eigenvectors direction
-inputsencodingvectorbis=zeros(size(matrixpoints[indexinputs,1:q],2),size(matrixpoints[indexinputs,1:q],1))
-inputsencodingvector=transpose!(inputsencodingvectorbis,matrixpoints[indexinputs,1:q]);
-# 	
-# 	                           ,,            ,,
-# 	                           db          `7MM        mm
-# 	                                         MM        MM
-# 	`7M'    ,A    `MF'.gP"Ya `7MM  .P"Ybmmm  MMpMMMb.mmMMmm ,pP"Ybd
-# 	  VA   ,VAA   ,V ,M'   Yb  MM :MI  I8    MM    MM  MM   8I   `"
-# 	   VA ,V  VA ,V  8M""""""  MM  WmmmP"    MM    MM  MM   `YMMMa.
-# 	    VVV    VVV   YM.    ,  MM 8M         MM    MM  MM   L.   I8
-# 	     W      W     `Mbmmd'.JMML.YMMMMMb .JMML  JMML.`MbmoM9mmmP'
-# 	                              6'     dP
-# 	                              Ybmmmd'
+		################################ Compute Moore-penrose pseudo inverse ################################
+		# The psuedo inverse compute the closest solution of Az=c in the least square sense. Our problem is DA=INPUTS , and we need to find D the weights adapted to decoding the activity
+		# We then will compute : tAtD=tINPUTS , and then tD=tINPUTS*pinv(transpose(A)) 
 
-# to obtain the decoding weights, necessity to input different input randomnly scattered through the environment and then compute the resulting steady state activity 
-# define vector of activities of the neurons:
-global totalactivities
-#totalactivities=activation.(g,neuronsencodingvector*inputsencodingvector); # we are storing the activities to compute pseudo inverse blabla
-totalactivities=complexactivation.(neuronsencodingvector*inputsencodingvector); # we are storing the activities to compute pseudo inverse blabla
+		totalactivitiesbis=zeros(size(totalactivities,2),size(totalactivities,1));
+		totalactivitiesbis=transpose!(totalactivitiesbis,totalactivities)
+		pseudoinv=pinv(totalactivitiesbis,0.01);
 
-################################ Compute Moore-penrose pseudo inverse ################################
-# The psuedo inverse compute the closest solution of Az=c in the least square sense. Our problem is DA=INPUTS , and we need to find D the weights adapted to decoding the activity
-# We then will compute : tAtD=tINPUTS , and then tD=tINPUTS*pinv(transpose(A)) 
-
-totalactivitiesbis=zeros(size(totalactivities,2),size(totalactivities,1));
-totalactivitiesbis=transpose!(totalactivitiesbis,totalactivities)
-pseudoinv=pinv(totalactivitiesbis,0.01);
-
-D=(pseudoinv*inputsencodingvector')'
+		D=(pseudoinv*inputsencodingvector')'
 
 
-# 	
-# 	           ,,                                          ,,          ,...       ,,        ,,
-# 	`7MM"""YMM db                                        `7MM        .d' ""     `7MM      `7MM
-# 	  MM    `7                                             MM        dM`          MM        MM
-# 	  MM   d `7MM  .P"Ybmmm      ,6"Yb.  `7MMpMMMb.   ,M""bMM       mMMmm,pW"Wq.  MM   ,M""bMM  .gP"Ya `7Mb,od8
-# 	  MM""MM   MM :MI  I8       8)   MM    MM    MM ,AP    MM        MM 6W'   `Wb MM ,AP    MM ,M'   Yb  MM' "'
-# 	  MM   Y   MM  WmmmP"        ,pm9MM    MM    MM 8MI    MM        MM 8M     M8 MM 8MI    MM 8M""""""  MM
-# 	  MM       MM 8M            8M   MM    MM    MM `Mb    MM        MM YA.   ,A9 MM `Mb    MM YM.    ,  MM
-# 	.JMML.   .JMML.YMMMMMb      `Moo9^Yo..JMML  JMML.`Wbmd"MML.    .JMML.`Ybmd9'.JMML.`Wbmd"MML.`Mbmmd'.JMML.
-# 	              6'     dP
-# 	              Ybmmmd'
-mkdir("Run_sigma$(sigma)q$(q)freeparam$(freeparam)")
+		# 	
+		# 	           ,,                                          ,,          ,...       ,,        ,,
+		# 	`7MM"""YMM db                                        `7MM        .d' ""     `7MM      `7MM
+		# 	  MM    `7                                             MM        dM`          MM        MM
+		# 	  MM   d `7MM  .P"Ybmmm      ,6"Yb.  `7MMpMMMb.   ,M""bMM       mMMmm,pW"Wq.  MM   ,M""bMM  .gP"Ya `7Mb,od8
+		# 	  MM""MM   MM :MI  I8       8)   MM    MM    MM ,AP    MM        MM 6W'   `Wb MM ,AP    MM ,M'   Yb  MM' "'
+		# 	  MM   Y   MM  WmmmP"        ,pm9MM    MM    MM 8MI    MM        MM 8M     M8 MM 8MI    MM 8M""""""  MM
+		# 	  MM       MM 8M            8M   MM    MM    MM `Mb    MM        MM YA.   ,A9 MM `Mb    MM YM.    ,  MM
+		# 	.JMML.   .JMML.YMMMMMb      `Moo9^Yo..JMML  JMML.`Wbmd"MML.    .JMML.`Ybmd9'.JMML.`Wbmd"MML.`Mbmmd'.JMML.
+		# 	              6'     dP
+		# 	              Ybmmmd'
+		mkdir("Run_sigma$(sigma)q$(q)freeparam$(freeparam)")
 
-# 	
-# 	           ,,                              ,,
-# 	         `7MM           mm                 db
-# 	           MM           MM
-# 	`7MMpdMAo. MM  ,pW"Wq.mmMMmm      .gP"Ya `7MM  .P"Ybmmm .gP"Ya `7MMpMMMb.
-# 	  MM   `Wb MM 6W'   `Wb MM       ,M'   Yb  MM :MI  I8  ,M'   Yb  MM    MM
-# 	  MM    M8 MM 8M     M8 MM       8M""""""  MM  WmmmP"  8M""""""  MM    MM
-# 	  MM   ,AP MM YA.   ,A9 MM       YM.    ,  MM 8M       YM.    ,  MM    MM
-# 	  MMbmmd'.JMML.`Ybmd9'  `Mbmo     `Mbmmd'.JMML.YMMMMMb  `Mbmmd'.JMML  JMML.
-# 	  MM                                          6'     dP
-# 	.JMML.                                        Ybmmmd'
-
-
-
-# 	
-# 	           ,,                      ,,
-# 	         `7MM           mm         db                                    mm
-# 	           MM           MM                                               MM
-# 	`7MMpdMAo. MM  ,pW"Wq.mmMMmm     `7MM  `7MMpMMMb. `7MMpdMAo.`7MM  `7MM mmMMmm
-# 	  MM   `Wb MM 6W'   `Wb MM         MM    MM    MM   MM   `Wb  MM    MM   MM
-# 	  MM    M8 MM 8M     M8 MM         MM    MM    MM   MM    M8  MM    MM   MM
-# 	  MM   ,AP MM YA.   ,A9 MM         MM    MM    MM   MM   ,AP  MM    MM   MM
-# 	  MMbmmd'.JMML.`Ybmd9'  `Mbmo    .JMML..JMML  JMML. MMbmmd'   `Mbod"YML. `Mbmo
-# 	  MM                                                MM
-# 	.JMML.                                            .JMML.
-
-indexneuroncenter=20; # index of the circle location 
-# establish the grid of points in the pool
-# draw a small circle around the iput location to check that activity is centered around input 
-radiuscircle=2.;
-theta=0:0.001:2*pi;
-scalarstate=[neuronsencodingvector[indexneuroncenter,:]'*matrixneurons[i,1:q] for i=1:numberofstates]
-fig2 = figure("Line Collection Example")
-ax = PyPlot.axes(xlim = (-R-R/100,R+R/100),ylim=(-R-R/100,R+R/100))
-# plot circle 
-plot(R*cos.(theta),R*sin.(theta),color="dimgray",zorder=1,lw=2)
-plot(neuronscoordinates[:,indexneuroncenter][1].+radiuscircle.*cos.(theta),neuronscoordinates[:,indexneuroncenter][2].+radiuscircle.*sin.(theta),linewidth=2,color="r")
-scatter(coordstates[1,:].-1/2,coordstates[2,:].-1/2,c=scalarstate./255);#,color="r") # add plot of the input 
-colorbar()
-ax[:set_axis_off]()
-savefig("Run_sigma$(sigma)q$(q)freeparam$(freeparam)/Input$(indexneuroncenter).png")
-
-indexneuroncenter=100; # index of the circle location 
-# establish the grid of points in the pool
-# draw a small circle around the iput location to check that activity is centered around input 
-radiuscircle=2.;
-theta=0:0.001:2*pi;
-scalarstate=[neuronsencodingvector[indexneuroncenter,:]'*matrixneurons[i,1:q] for i=1:numberofstates]
-fig2 = figure("Line Collection Example")
-ax = PyPlot.axes(xlim = (-R-R/100,R+R/100),ylim=(-R-R/100,R+R/100))
-# plot circle 
-plot(R*cos.(theta),R*sin.(theta),color="dimgray",zorder=1,lw=2)
-plot(neuronscoordinates[:,indexneuroncenter][1].+radiuscircle.*cos.(theta),neuronscoordinates[:,indexneuroncenter][2].+radiuscircle.*sin.(theta),linewidth=2,color="r")
-scatter(coordstates[1,:].-1/2,coordstates[2,:].-1/2,c=scalarstate./255);#,color="r") # add plot of the input 
-colorbar()
-ax[:set_axis_off]()
-savefig("Run_sigma$(sigma)q$(q)freeparam$(freeparam)/Input$(indexneuroncenter).png")
+		# 	
+		# 	           ,,                              ,,
+		# 	         `7MM           mm                 db
+		# 	           MM           MM
+		# 	`7MMpdMAo. MM  ,pW"Wq.mmMMmm      .gP"Ya `7MM  .P"Ybmmm .gP"Ya `7MMpMMMb.
+		# 	  MM   `Wb MM 6W'   `Wb MM       ,M'   Yb  MM :MI  I8  ,M'   Yb  MM    MM
+		# 	  MM    M8 MM 8M     M8 MM       8M""""""  MM  WmmmP"  8M""""""  MM    MM
+		# 	  MM   ,AP MM YA.   ,A9 MM       YM.    ,  MM 8M       YM.    ,  MM    MM
+		# 	  MMbmmd'.JMML.`Ybmd9'  `Mbmo     `Mbmmd'.JMML.YMMMMMb  `Mbmmd'.JMML  JMML.
+		# 	  MM                                          6'     dP
+		# 	.JMML.                                        Ybmmmd'
+		include("PlotEigenvectors.jl") # this generates 2 figure one heatmap and one scatterplot 
 
 
 
+		# 	
+		# 	           ,,                      ,,
+		# 	         `7MM           mm         db                                    mm
+		# 	           MM           MM                                               MM
+		# 	`7MMpdMAo. MM  ,pW"Wq.mmMMmm     `7MM  `7MMpMMMb. `7MMpdMAo.`7MM  `7MM mmMMmm
+		# 	  MM   `Wb MM 6W'   `Wb MM         MM    MM    MM   MM   `Wb  MM    MM   MM
+		# 	  MM    M8 MM 8M     M8 MM         MM    MM    MM   MM    M8  MM    MM   MM
+		# 	  MM   ,AP MM YA.   ,A9 MM         MM    MM    MM   MM   ,AP  MM    MM   MM
+		# 	  MMbmmd'.JMML.`Ybmd9'  `Mbmo    .JMML..JMML  JMML. MMbmmd'   `Mbod"YML. `Mbmo
+		# 	  MM                                                MM
+		# 	.JMML.                                            .JMML.
+		ioff()
+		indexneuroncenter=20; # index of the circle location 
+		# establish the grid of points in the pool
+		# draw a small circle around the iput location to check that activity is centered around input 
+		radiuscircle=2.;
+		theta=0:0.001:2*pi;
+		scalarstate=[neuronsencodingvector[indexneuroncenter,:]'*matrixneurons[i,1:q] for i=1:numberofstates]
+		fig2 = figure("Line Collection Example")
+		ax = PyPlot.axes(xlim = (-R-R/100,R+R/100),ylim=(-R-R/100,R+R/100))
+		# plot circle 
+		plot(R*cos.(theta),R*sin.(theta),color="dimgray",zorder=1,lw=2)
+		plot(neuronscoordinates[:,indexneuroncenter][1].+radiuscircle.*cos.(theta),neuronscoordinates[:,indexneuroncenter][2].+radiuscircle.*sin.(theta),linewidth=2,color="r")
+		scatter(coordstates[1,:].-1/2,coordstates[2,:].-1/2,c=scalarstate./255);#,color="r") # add plot of the input 
+		colorbar()
+		ax[:set_axis_off]()
+		savefig("Run_sigma$(sigma)q$(q)freeparam$(freeparam)/Input$(indexneuroncenter).png")
+		close()
+		ioff()
+		indexneuroncenter=100; # index of the circle location 
+		# establish the grid of points in the pool
+		# draw a small circle around the iput location to check that activity is centered around input 
+		radiuscircle=2.;
+		theta=0:0.001:2*pi;
+		scalarstate=[neuronsencodingvector[indexneuroncenter,:]'*matrixneurons[i,1:q] for i=1:numberofstates]
+		fig2 = figure("Line Collection Example")
+		ax = PyPlot.axes(xlim = (-R-R/100,R+R/100),ylim=(-R-R/100,R+R/100))
+		# plot circle 
+		plot(R*cos.(theta),R*sin.(theta),color="dimgray",zorder=1,lw=2)
+		plot(neuronscoordinates[:,indexneuroncenter][1].+radiuscircle.*cos.(theta),neuronscoordinates[:,indexneuroncenter][2].+radiuscircle.*sin.(theta),linewidth=2,color="r")
+		scatter(coordstates[1,:].-1/2,coordstates[2,:].-1/2,c=scalarstate./255);#,color="r") # add plot of the input 
+		colorbar()
+		ax[:set_axis_off]()
+		savefig("Run_sigma$(sigma)q$(q)freeparam$(freeparam)/Input$(indexneuroncenter).png")
+		close()
+		# 	
+		# 	           ,,
+		# 	         `7MM           mm       `7MM"""Mq.
+		# 	           MM           MM         MM   `MM.
+		# 	`7MMpdMAo. MM  ,pW"Wq.mmMMmm       MM   ,M9  .gP"Ya   ,p6"bo
+		# 	  MM   `Wb MM 6W'   `Wb MM         MMmmdM9  ,M'   Yb 6M'  OO
+		# 	  MM    M8 MM 8M     M8 MM         MM  YM.  8M"""""" 8M
+		# 	  MM   ,AP MM YA.   ,A9 MM         MM   `Mb.YM.    , YM.    ,
+		# 	  MMbmmd'.JMML.`Ybmd9'  `Mbmo    .JMML. .JMM.`Mbmmd'  YMbmd'
+		# 	  MM
+		# 	.JMML.
+		ioff()
+		indexneuroncenter=100; # index of the circle location 
+		scalarneurons=[neuronsencodingvector[indexneuroncenter,:]'*D[:,i] for i=1:numberofneurons]
+		# draw a small circle around the iput location to check that activity is centered around input 
+		radiuscircle=2.;
+		theta=0:0.001:2*pi;
+		fig2 = figure("Line Collection Example")
+		ax = PyPlot.axes(xlim = (-R-R/100,R+R/100),ylim=(-R-R/100,R+R/100))
+		# plot circle 
+		plot(R*cos.(theta),R*sin.(theta),color="dimgray",zorder=1,lw=2)
+		plot(neuronscoordinates[:,indexneuroncenter][1].+radiuscircle.*cos.(theta),neuronscoordinates[:,indexneuroncenter][2].+radiuscircle.*sin.(theta),linewidth=2,color="r")
+		scatter(neuronscoordinates[1,:].-1/2,neuronscoordinates[2,:].-1/2,c=scalarneurons./255);#,color="r") # add plot of the input 
+		colorbar()
+		ax[:set_axis_off]()
+		savefig("Run_sigma$(sigma)q$(q)freeparam$(freeparam)/Eigenvectortest$(indexneuroncenter).png")
+		close()
+		ioff()
+		indexneuroncenter=20; # index of the circle location 
+		scalarneurons=[neuronsencodingvector[indexneuroncenter,:]'*D[:,i] for i=1:numberofneurons]
+		# draw a small circle around the iput location to check that activity is centered around input 
+		radiuscircle=2.;
+		theta=0:0.001:2*pi;
+		fig2 = figure("Line Collection Example")
+		ax = PyPlot.axes(xlim = (-R-R/100,R+R/100),ylim=(-R-R/100,R+R/100))
+		# plot circle 
+		plot(R*cos.(theta),R*sin.(theta),color="dimgray",zorder=1,lw=2)
+		plot(neuronscoordinates[:,indexneuroncenter][1].+radiuscircle.*cos.(theta),neuronscoordinates[:,indexneuroncenter][2].+radiuscircle.*sin.(theta),linewidth=2,color="r")
+		scatter(neuronscoordinates[1,:].-1/2,neuronscoordinates[2,:].-1/2,c=scalarneurons./255);#,color="r") # add plot of the input 
+		colorbar()
+		ax[:set_axis_off]()
+		savefig("Run_sigma$(sigma)q$(q)freeparam$(freeparam)/Eigenvectortest$(indexneuroncenter).png")
+		close()
+		# 	
+		# 	  ,,                ,,
+		# 	  db                db   mm
+		# 	                         MM
+		# 	`7MM  `7MMpMMMb.  `7MM mmMMmm
+		# 	  MM    MM    MM    MM   MM
+		# 	  MM    MM    MM    MM   MM
+		# 	  MM    MM    MM    MM   MM
+		# 	.JMML..JMML  JMML..JMML. `Mbmo
+		# 	
+		# 	
+		#indexstart=rand(1:4);
+		#indexplatform=rand(1:length(Xplatform));
+		indexstart=4;
+		indexplatform=5;
+		# find index of the first input state = the nearest state of the official starting points 
+		indexinput1=findall((minimum(sum((coordstates-repeat(vcat(Xstart[indexstart], Ystart[indexstart]),1,size(coordstates,2))).^2,dims=1)).==sum((coordstates-repeat(vcat(Xstart[indexstart], Ystart[indexstart]),1,size(coordstates,2))).^2,dims=1))[:]);
+		# find index of the second input state = the nearest state of the official platform point  
+		indexinput2=findall((minimum(sum((coordstates-repeat(vcat(Xplatform[indexplatform], Yplatform[indexplatform]),1,size(coordstates,2))).^2,dims=1)).==sum((coordstates-repeat(vcat(Xplatform[indexplatform], Yplatform[indexplatform]),1,size(coordstates,2))).^2,dims=1))[:]);
+		inputencodingvector1=matrixpoints[indexinput1,1:q];
+		inputencodingvector2=matrixpoints[indexinput2,1:q];
+		# define trajectory of the maximum 
+		global trajectory
+		trajectory=[];
+		# input the start location: 
+		global activity 
+		activity=zeros(numberofneurons,1)
+		global t
+		t=0;
+			while t<delayinput*tau
+				global activity
+				#activity=activity.*(1-dt/tau).+dt/tau.*activation.(g,neuronsencodingvector*((1-epsilon).*D*activity[:].+alpha.*inputencodingvector1[:]));
+				activity=activity.*(1-dt/tau).+dt/tau.*complexactivation.(neuronsencodingvector*((1-epsilon).*D*activity[:].+alpha.*inputencodingvector1[:]));
+				global trajectory
+				trajectory=push!(trajectory,findall(maximum(activity).==activity)[1]);
+				global t
+				t=t+dt;
+			end # end init of activity with the first input 
 
-# 	
-# 	  ,,                ,,
-# 	  db                db   mm
-# 	                         MM
-# 	`7MM  `7MMpMMMb.  `7MM mmMMmm
-# 	  MM    MM    MM    MM   MM
-# 	  MM    MM    MM    MM   MM
-# 	  MM    MM    MM    MM   MM
-# 	.JMML..JMML  JMML..JMML. `Mbmo
-# 	
-# 	
-#indexstart=rand(1:4);
-#indexplatform=rand(1:length(Xplatform));
-indexstart=4;
-indexplatform=5;
-# find index of the first input state = the nearest state of the official starting points 
-indexinput1=findall((minimum(sum((coordstates-repeat(vcat(Xstart[indexstart], Ystart[indexstart]),1,size(coordstates,2))).^2,dims=1)).==sum((coordstates-repeat(vcat(Xstart[indexstart], Ystart[indexstart]),1,size(coordstates,2))).^2,dims=1))[:]);
-# find index of the second input state = the nearest state of the official platform point  
-indexinput2=findall((minimum(sum((coordstates-repeat(vcat(Xplatform[indexplatform], Yplatform[indexplatform]),1,size(coordstates,2))).^2,dims=1)).==sum((coordstates-repeat(vcat(Xplatform[indexplatform], Yplatform[indexplatform]),1,size(coordstates,2))).^2,dims=1))[:]);
-inputencodingvector1=matrixpoints[indexinput1,1:q];
-inputencodingvector2=matrixpoints[indexinput2,1:q];
+		# 	
+		# 	                                                                            ,,
+		# 	`7MMM.     ,MMF'                                                          `7MM
+		# 	  MMMb    dPMM                                                              MM
+		# 	  M YM   ,M MM  ,pW"Wq.`7M'   `MF'.gP"Ya       .P"Ybmmm ,pW"Wq.   ,6"Yb.    MM
+		# 	  M  Mb  M' MM 6W'   `Wb VA   ,V ,M'   Yb     :MI  I8  6W'   `Wb 8)   MM    MM
+		# 	  M  YM.P'  MM 8M     M8  VA ,V  8M""""""      WmmmP"  8M     M8  ,pm9MM    MM
+		# 	  M  `YM'   MM YA.   ,A9   VVV   YM.    ,     8M       YA.   ,A9 8M   MM    MM
+		# 	.JML. `'  .JMML.`Ybmd9'     W     `Mbmmd'      YMMMMMb  `Ybmd9'  `Moo9^Yo..JMML.
+		# 	                                              6'     dP
+		# 	                                              Ybmmmd'
+		mkdir("Run_sigma$(sigma)q$(q)freeparam$(freeparam)/ActivitiesMesh") # dir where the activities will be stored 
+		mkdir("Run_sigma$(sigma)q$(q)freeparam$(freeparam)/ActivitiesScatter") # dir where the activities will be stored 
+		global t
+		t=0;
+		global k
+		k=0;
+			while t<delayend*tau
+			    global activity
+			        activity=activity.*(1-dt/tau).+dt/tau.*activation.(g,neuronsencodingvector*((1-epsilon).*D*activity[:].+alpha.*inputencodingvector2[:]));
+			        # activity=activity.*(1-dt/tau).+dt/tau.*complexactivation.(neuronsencodingvector*((1-epsilon).*D*activity[:].+alpha.*inputencodingvector2[:]));
+			    global t
+			    t=t+dt;
+			    global trajectory
+			    trajectory=push!(trajectory,findall(maximum(activity).==activity)[1]);
+			    if isinteger(k/100) # every 5 timesteps we store the picture of the activity rofile 
+			        # 	
+			        # 	           ,,                                                       ,,
+			        # 	         `7MM           mm                                        `7MM
+			        # 	           MM           MM                                          MM
+			        # 	`7MMpdMAo. MM  ,pW"Wq.mmMMmm     `7MMpMMMb.pMMMb.  .gP"Ya  ,pP"Ybd  MMpMMMb.
+			        # 	  MM   `Wb MM 6W'   `Wb MM         MM    MM    MM ,M'   Yb 8I   `"  MM    MM
+			        # 	  MM    M8 MM 8M     M8 MM         MM    MM    MM 8M"""""" `YMMMa.  MM    MM
+			        # 	  MM   ,AP MM YA.   ,A9 MM         MM    MM    MM YM.    , L.   I8  MM    MM
+			        # 	  MMbmmd'.JMML.`Ybmd9'  `Mbmo    .JMML  JMML  JMML.`Mbmmd' M9mmmP'.JMML  JMML.
+			        # 	  MM
+			        # 	.JMML.
+			        steps=1;
+			        x=[-R+(steps)*(k-1) for k=1:(2*R/steps+1)];
+			        # Create matrix activity :
+			        act=zeros(length(x),length(x)); 
+			        y=zeros(1,length(x));
+			        transpose!(y,x);                    
+			        for i = 1:length(x)
+			            for j = 1:length(x)
+			                # make sure the point is in the pool
+			                if sqrt((x[i]^2+y[j]^2)) < R
+			                        indexnearestneuron=findall(sum((neuronscoordinates.-transpose(repeat([x[i] y[j]],size(neuronscoordinates,2)))).^2,dims=1)[:].==minimum(sum((neuronscoordinates.-transpose(repeat([x[i] y[j]],size(neuronscoordinates,2)))).^2,dims=1)[:]))[1];
+			                        #println(counting);
+			                        #println(i,j);
+			                        #  println(intersect(find(x->x==j,convert.(Int64, neuronscoordinates)[:,2]),find(x->x==i,convert.(Int64, neuronscoordinates)[:,1])));
+			                        act[j,i]=activity[indexnearestneuron];
+			                else
+			                        act[j,i]= NaN;
+			                end
+			            end
+			        end 
+			        global x,y
+			        x=[-R+(steps)*(k-1) for k=1:(2*R/steps+1)];
+			        y=zeros(1,length(x));
+			        transpose!(y,x);   
+			            # draw a small circle around the iput location to check that activity is centered around input 
+			            radiuscircle=2.;
+			            theta=0:0.001:2*pi+0.001;
+			            ioff()
+			            fig2 = figure("q=$(q)_$(k)_g=$(g)_alpha=$(alpha)_freeparam=$(freeparameter)epsilon=_$(epsilon)")
+			            ax2 = PyPlot.axes(xlim = (-R-R/100,R+R/100),ylim=(-R-R/100,R+R/100))
+			            pcolormesh(x,x,act)
+			            colorbar()
+			            ax2[:grid](false);
+			            ax2[:set_axis_off]();
+			            #scatter(inputscoordinates[indexinput,:][1],inputscoordinates[indexinput,:][2],color="r") # add plot of the input center 
+			            plot(coordstates[:,indexinput2][1].+radiuscircle.*cos.(theta),coordstates[:,indexinput2][2].+radiuscircle.*sin.(theta),linewidth=2,color=[250/255,128/255,114/255])
+			            plot(coordstates[:,indexinput1][1].+radiuscircle.*cos.(theta),coordstates[:,indexinput1][2].+radiuscircle.*sin.(theta),linewidth=2,color=[169/255,169/255,169/255])
+			            plot(R*cos.(theta),R*sin.(theta),color="dimgray",zorder=1,lw=2)
+			            savefig("Run_sigma$(sigma)q$(q)freeparam$(freeparam)/ActivitiesMesh/Activity_$(k).png")
+			            close()
 
-# define trajectory of the maximum 
-global trajectory
-trajectory=[];
-# input the start location: 
-global activity 
-activity=zeros(numberofneurons,1)
-global t
-t=0;
-while t<delayinput*tau
-	global activity
-	#activity=activity.*(1-dt/tau).+dt/tau.*activation.(g,neuronsencodingvector*((1-epsilon).*D*activity[:].+alpha.*inputencodingvector1[:]));
-	activity=activity.*(1-dt/tau).+dt/tau.*complexactivation.(neuronsencodingvector*((1-epsilon).*D*activity[:].+alpha.*inputencodingvector1[:]));
-	global trajectory
-	trajectory=push!(trajectory,findall(maximum(activity).==activity)[1]);
-	global t
-	t=t+dt;
-end # end init of activity with the first input 
-
-# 	
-# 	                                                                            ,,
-# 	`7MMM.     ,MMF'                                                          `7MM
-# 	  MMMb    dPMM                                                              MM
-# 	  M YM   ,M MM  ,pW"Wq.`7M'   `MF'.gP"Ya       .P"Ybmmm ,pW"Wq.   ,6"Yb.    MM
-# 	  M  Mb  M' MM 6W'   `Wb VA   ,V ,M'   Yb     :MI  I8  6W'   `Wb 8)   MM    MM
-# 	  M  YM.P'  MM 8M     M8  VA ,V  8M""""""      WmmmP"  8M     M8  ,pm9MM    MM
-# 	  M  `YM'   MM YA.   ,A9   VVV   YM.    ,     8M       YA.   ,A9 8M   MM    MM
-# 	.JML. `'  .JMML.`Ybmd9'     W     `Mbmmd'      YMMMMMb  `Ybmd9'  `Moo9^Yo..JMML.
-# 	                                              6'     dP
-# 	                                              Ybmmmd'
-
-
-
-
-
-
-
-
-
-
-
-
-end 
-end 
+			            # 	
+			            # 	           ,,
+			            # 	         `7MM           mm                                 mm     mm
+			            # 	           MM           MM                                 MM     MM
+			            # 	`7MMpdMAo. MM  ,pW"Wq.mmMMmm     ,pP"Ybd  ,p6"bo   ,6"Yb.mmMMmm mmMMmm .gP"Ya `7Mb,od8
+			            # 	  MM   `Wb MM 6W'   `Wb MM       8I   `" 6M'  OO  8)   MM  MM     MM  ,M'   Yb  MM' "'
+			            # 	  MM    M8 MM 8M     M8 MM       `YMMMa. 8M        ,pm9MM  MM     MM  8M""""""  MM
+			            # 	  MM   ,AP MM YA.   ,A9 MM       L.   I8 YM.    , 8M   MM  MM     MM  YM.    ,  MM
+			            # 	  MMbmmd'.JMML.`Ybmd9'  `Mbmo    M9mmmP'  YMbmd'  `Moo9^Yo.`Mbmo  `Mbmo`Mbmmd'.JMML.
+			            # 	  MM
+			            # 	.JMML.
+					    ioff()
+			            fig2 = figure("q=$(q)_$(k)_g=$(g)_alpha=$(alpha)_freeparam=$(freeparameter)epsilon=_$(epsilon)")
+			            ax2 = PyPlot.axes(xlim = (-R-R/100,R+R/100),ylim=(-R-R/100,R+R/100))
+						scatter(neuronscoordinates[1,:].-1/2,neuronscoordinates[2,:].-1/2,c=activity./255);#,color="r") # add plot of the input 
+						ax2[:set_axis_off]()
+			            colorbar()
+			            ax2[:grid](false);
+			            plot(coordstates[:,indexinput2][1].+radiuscircle.*cos.(theta),coordstates[:,indexinput2][2].+radiuscircle.*sin.(theta),linewidth=2,color=[250/255,128/255,114/255])
+			            plot(coordstates[:,indexinput1][1].+radiuscircle.*cos.(theta),coordstates[:,indexinput1][2].+radiuscircle.*sin.(theta),linewidth=2,color=[169/255,169/255,169/255])
+			            plot(R*cos.(theta),R*sin.(theta),color="dimgray",zorder=1,lw=2)
+			            savefig("Run_sigma$(sigma)q$(q)freeparam$(freeparam)/ActivitiesScatter/Activity_$(k).png")
+			            clf()
+			            close()
+			    end
+			    global k 
+			    k=k+1;
+			end # end evolution to the new goal 
+		end 
+	end 
 end

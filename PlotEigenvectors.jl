@@ -1,3 +1,4 @@
+
 # chose eigenvectors to pot 
 indexvectors=[1,2,3,4,5]
 
@@ -7,9 +8,7 @@ using PyCall
 using PyPlot
 using LaTeXStrings
 @pyimport matplotlib.patches as patch
-@pyimport matplotlib.gridspec as grdspc
 @pyimport numpy as np
-axes_grid1 = pyimport("mpl_toolkits.axes_grid1") # for colorbar to be shaped to the axes 
 
 
 # 	
@@ -23,10 +22,9 @@ axes_grid1 = pyimport("mpl_toolkits.axes_grid1") # for colorbar to be shaped to 
 # 	.JMML  JMML.`Mbmmd' `Moo9^Yo.`Mbmo.JMML  JMML  JMML.`Moo9^Yo. MMbmmd'
 # 	                                                              MM
 # 	                                                            .JMML.
+ioff()
 
 fig2,axe = PyPlot.subplots(1,length(indexvectors),figsize=(25, 6))
-
-
 # define scope image 
 # let image 
 global image 
@@ -51,12 +49,10 @@ let indexvector=1 # init, then will increm
 		transpose!(y,x);
 
 		# initialise meshgrid 
-
-
 		# initalize the amplitude map
 		# ax.meshgrid(x,y)
 		let eigenvector = zeros(length(x),length(x));
-			println(indexvector)
+			# println(indexvector)
 			# for each place point in the grid, calculate the critic value
 			for i = 1:length(x)
 
@@ -86,29 +82,22 @@ let indexvector=1 # init, then will increm
 		ax.set_yticks([])
 		ax.set_xticklabels([])
 		ax.set_yticklabels([])
-
 		#ax.set_title(L"$ \varphi_$(indexvector) $")
 		title=latexstring("\$\\varphi_{$(indexvector-1)}\$")
 		ax.set_title(title,fontweight="bold", size=20)
-
 		# show()
-
 	end # end loop through vectorlist
-
 end# end scope indexvector 
 
-global image 
+global image  # PyObject <matplotlib.collections.QuadMesh object at 0x7f8e07d74a90>
 cbar=fig2[:colorbar](ax=axe,image)
 cbar.ax.tick_params(labelsize=16) 
-
-
-show()
+# show()
 
 
 savefig("Run_sigma$(sigma)q$(q)freeparam$(freeparam)/Eigenvector_all_heatmap.png")
 
-end # end scope image 
-
+close()
 
 # 	
 # 	
@@ -120,16 +109,10 @@ end # end scope image
 # 	L.   I8 YM.    , 8M   MM  MM     MM  YM.    ,  MM
 # 	M9mmmP'  YMbmd'  `Moo9^Yo.`Mbmo  `Mbmo`Mbmmd'.JMML.
 # 	
+ioff()
 
-# fig2,axe = PyPlot.subplots(1,length(indexvectors),figsize=(100,10))#,gridspec_kw={"width_ratios":[1,1, 0.05]})
-fig2, axe= PyPlot.subplots(1,length(indexvectors)+1,figsize=(55,10),gridspec_kw= Dict("width_ratios"=>[1, 1, 1, 1, 1, 0.1])) #vcat(ones(1,length(indexvectors)),0.05)))
-
-
-	#,figsize=(101,10),gridspec_kw= Dict("width_ratios"=>[1, 1, 1, 1, 1, 0.00001])) #vcat(ones(1,length(indexvectors)),0.05)))
-
-
-# fig2.subplots_adjust(wspace=0.01)
-# define scope image 
+# colorbar has its own place but a bit far from the plot - still prefered solution 
+fig2, axe= PyPlot.subplots(1,length(indexvectors)+1,figsize=(51,10),gridspec_kw= Dict("width_ratios"=>[1, 1, 1, 1, 1, 0.00000001])) #vcat(ones(1,length(indexvectors)),0.05)))
 # let image 
 global image 
 
@@ -137,52 +120,108 @@ global image
 
 # [eigentest[i,indexvector] for i=1:numberofstates for indexvector in indexvectors ]
 eigenstate=reshape([eigentest[i,indexvector] for i=1:numberofstates for indexvector in indexvectors ],length(indexvectors),numberofstates)
+global cmax, cmin
 cmax=maximum(eigenstate)/255;
 cmin=minimum(eigenstate)/255;
-norm = plt.Normalize(cmin, cmax)
+# norm = plt.Normalize(cmin, cmax)
 # reshape([i*j for i=1:2 for j=1:3],3,2)
 
 
 for indexvector=1:length(indexvectors)
 
-			# ax=axe[indexvector] #subplot(1,length(indexvectors)+1,indexvector)
+			ax=subplot(1,length(indexvectors)+1,indexvector)
 
-			axe[indexvector][:set_axis_off]()
+			ax[:set_axis_off]()
 			# plot circle 
-			axe[indexvector].plot(R*cos.(theta),R*sin.(theta),ls="-",color="k")#[169/255,169/255,169/255])
-			axe[indexvector].set_xlim(-R-R/100,R+R/100)
-			axe[indexvector].set_ylim(-R-R/100,R+R/100)
-			image= axe[indexvector].scatter(coordstates[1,:].-1/2,coordstates[2,:].-1/2,c=eigenstate[indexvector,:]./255,s=5);#,color="r") 
-			# axe[indexvector].clim(cmin,cmax)
+			ax.plot(R*cos.(theta),R*sin.(theta),ls="-",color="k")#[169/255,169/255,169/255])
+			ax.set_xlim(-R-R/100,R+R/100)
+			ax.set_ylim(-R-R/100,R+R/100)
+			global image 
+			image=ax.scatter(coordstates[1,:].-1/2,coordstates[2,:].-1/2,c=eigenstate[indexvector,:]./255,s=5);#,color="r") # this works 
+			image=PyPlot.scatter(coordstates[1,:].-1/2,coordstates[2,:].-1/2,c=eigenstate[indexvector,:]./255,s=5);#,color="r") 
+
+			PyPlot.clim(cmin,cmax)
+			# quadmesh.set_clim(cmin,cmax)
 			#ax.grid(False) 
 			# Hide axes ticks
-			axe[indexvector].set_xticks([])
-			axe[indexvector].set_yticks([])
-			axe[indexvector].set_xticklabels([])
-			axe[indexvector].set_yticklabels([])
+			ax.set_xticks([])
+			ax.set_yticks([])
+			ax.set_xticklabels([])
+			ax.set_yticklabels([])
 			#ax.set_title(L"$ \varphi_$(indexvector) $")
-			title=latexstring("\$\\varphi_{$(indexvector)}\$")
-			axe[indexvector].set_title(title,fontweight="bold", size=20)
-			println(indexvector)
-		# colorbar()
+			title=latexstring("\$\\varphi_{$(indexvector-1)}\$")
+			ax.set_title(title,fontweight="bold", size=20)
 end
 
-# fig2.subplots_adjust(right=0.9)
-# cbar_ax = fig2.add_axes([0.85, 0, .1, 1])# [left, bottom, width, height] of the new axes. All quantities are in fractions of figure width and height. 
-axe[length(indexvectors)+1][:set_axis_off]()
-# fig2.colorbar(image, ax=axes.ravel().tolist())
-# fig2[:colorbar](ax=cbar_ax,image)
-cbar=fig2[:colorbar](image,ax=axe[length(indexvectors)+1])#,cbar_ax)
-cbar.ax.tick_params(labelsize=16) 
-
-show()
-
-
+ax=subplot(1,length(indexvectors)+1,length(indexvectors)+1)
+ax[:set_axis_off]()
+ax.set_xticks([])
+ax.set_yticks([])
+ax.set_xticklabels([])
+ax.set_yticklabels([])
+# fig2.subplots_adjust(wspace=0.01)
+PyPlot.colorbar(image,ax=ax) # this works but the colorbar is very far away 
 
 
 savefig("Run_sigma$(sigma)q$(q)freeparam$(freeparam)/Eigenvector_all_scatter.png")
 
-end # end scope image 
+close()
+# show()
+
+
+# # colorbar takes over the last plot 
+# fig2,axe = PyPlot.subplots(1,length(indexvectors),figsize=(25, 6))
+# # define scope image 
+# # let image 
+# global image 
+# # eigenstate=zeros(length(indexvectors),numberofstates)
+# # [eigentest[i,indexvector] for i=1:numberofstates for indexvector in indexvectors ]
+# eigenstate=reshape([eigentest[i,indexvector] for i=1:numberofstates for indexvector in indexvectors ],length(indexvectors),numberofstates)
+# cmax=maximum(eigenstate)/255;
+# cmin=minimum(eigenstate)/255;
+# # reshape([i*j for i=1:2 for j=1:3],3,2)
+# for indexvector in indexvectors 
+# 		ax=subplot(1,length(indexvectors),indexvector)
+# 		ax[:set_axis_off]()
+# 		# plot circle 
+# 		ax.plot(R*cos.(theta),R*sin.(theta),ls="-",color="k")#[169/255,169/255,169/255])
+# 		ax.set_xlim(-R-R/100,R+R/100)
+# 		ax.set_ylim(-R-R/100,R+R/100)
+# 		global image
+# 		image=PyPlot.scatter(coordstates[1,:].-1/2,coordstates[2,:].-1/2,c=eigenstate[indexvector,:]./255,s=3);#,color="r") 
+# 		PyPlot.clim(cmin,cmax)
+# 		#ax.grid(False) 
+# 		# Hide axes ticks
+# 		ax.set_xticks([])
+# 		ax.set_yticks([])
+# 		ax.set_xticklabels([])
+# 		ax.set_yticklabels([])
+# 		#ax.set_title(L"$ \varphi_$(indexvector) $")
+# 		title=latexstring("\$\\varphi_{$(indexvector-1)}\$")
+# 		ax.set_title(title,fontweight="bold", size=20)
+# 	# colorbar()
+
+# end# end scope indexvector 
+
+
+# cbar=PyPlot.colorbar()
+
+# # # global image # PyObject <matplotlib.collections.PathCollection object at 0x7f8e14082ee0>
+# # # cbar=fig2[:colorbar](ax=axe,image)
+# # cbar.ax.tick_params(labelsize=16) 
+# # cbar=fig2[:colorbar](ax=axe,image)
+# # PyPlot.colorbar(image)
+# cbar.ax.tick_params(labelsize=16) 
+# show()
+
+
+
+
+
+
+# savefig("Eigenvector_all_scatter.png")
+
+# # end # end scope image 
 	
 
 
@@ -192,6 +231,41 @@ end # end scope image
 
 
 
+
+# scalarneurons=[neuronsencodingvector[indexneuroncenter,:]'*D[:,i] for i=1:numberofneurons]
+
+
+
+# # draw a small circle around the iput location to check that activity is centered around input 
+# radiuscircle=2.;
+
+
+# theta=0:0.001:2*pi;
+
+# using PyPlot
+# using PyCall
+
+
+
+# fig2 = figure("Line Collection Example")
+# ax = PyPlot.axes(xlim = (-R-R/100,R+R/100),ylim=(-R-R/100,R+R/100))
+
+# # plot circle 
+# plot(R*cos.(theta),R*sin.(theta),color="dimgray",zorder=1,lw=2)
+# plot(neuronscoordinates[:,indexneuroncenter][1].+radiuscircle.*cos.(theta),neuronscoordinates[:,indexneuroncenter][2].+radiuscircle.*sin.(theta),linewidth=2,color="r")
+
+# scatter(neuronscoordinates[1,:].-1/2,neuronscoordinates[2,:].-1/2,c=scalarneurons./255);#,color="r") # add plot of the input 
+
+# colorbar()
+# ax[:set_axis_off]()
+# savefig("Eigenvectortest$(indexneuroncenter).png")
+
+
+# show()
+
+
+
+#This works fine
 # Test plotting with meshgrid 
 # test=[1 2 1 ; 1 1 1 ; 1 1 1];
 # using PyPlot

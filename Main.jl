@@ -181,7 +181,6 @@ matrixneurons=factornorm*matrixpoints; # new coordinates for neurons, the norm o
 # each row is one neuron in the order, each column are their coordinate along each eigenvectors direction
 neuronsencodingvector=matrixneurons[indexneurons,1:q]; # coordinates of the neurons 
 
-
 # each row is one input in the order, each column are their coordinate along each eigenvectors direction
 inputsencodingvectorbis=zeros(size(matrixpoints[indexinputs,1:q],2),size(matrixpoints[indexinputs,1:q],1))
 inputsencodingvector=transpose!(inputsencodingvectorbis,matrixpoints[indexinputs,1:q]);
@@ -190,15 +189,9 @@ inputsencodingvector=transpose!(inputsencodingvectorbis,matrixpoints[indexinputs
 # to obtain the decoding weights, necessity to input different input randomnly scattered through the environment and then compute the resulting steady state activity 
 # define vector of activities of the neurons:
 global totalactivities
-#totalactivities=activation.(g,neuronsencodingvector*inputsencodingvector); # we are storing the activities to compute pseudo inverse blabla
+totalactivities=activation.(g,neuronsencodingvector*inputsencodingvector); # we are storing the activities to compute pseudo inverse blabla
 
-totalactivities=complexactivation.(neuronsencodingvector*inputsencodingvector); # we are storing the activities to compute pseudo inverse blabla
-
-
-
-
-
-
+# totalactivities=complexactivation.(neuronsencodingvector*inputsencodingvector); # we are storing the activities to compute pseudo inverse blabla
 
 
 
@@ -246,17 +239,17 @@ activity=zeros(numberofneurons,1)
 global t
 t=0;
 while t<delayinput*tau
-global activity
-#activity=activity.*(1-dt/tau).+dt/tau.*activation.(g,neuronsencodingvector*((1-epsilon).*D*activity[:].+alpha.*inputencodingvector1[:]));
+    global activity
+    activity=activity.*(1-dt/tau).+dt/tau.*activation.(g,neuronsencodingvector*((1-epsilon).*D*activity[:].+alpha.*inputencodingvector1[:]));
 
 
-activity=activity.*(1-dt/tau).+dt/tau.*complexactivation.(neuronsencodingvector*((1-epsilon).*D*activity[:].+alpha.*inputencodingvector1[:]));
+    # activity=activity.*(1-dt/tau).+dt/tau.*complexactivation.(neuronsencodingvector*((1-epsilon).*D*activity[:].+alpha.*inputencodingvector1[:]));
 
 
-global trajectory
-trajectory=push!(trajectory,findall(maximum(activity).==activity)[1]);
-global t
-t=t+dt;
+    global trajectory
+    trajectory=push!(trajectory,findall(maximum(activity).==activity)[1]);
+    global t
+    t=t+dt;
 
 end # end init of activity with the first input 
 
@@ -270,10 +263,9 @@ global k
 k=0;
 while t<delayend*tau
     global activity
-    #activity=activity.*(1-dt/tau).+dt/tau.*activation.(g,neuronsencodingvector*((1-epsilon).*D*activity[:].+alpha.*inputencodingvector2[:]));
+        activity=activity.*(1-dt/tau).+dt/tau.*activation.(g,neuronsencodingvector*((1-epsilon).*D*activity[:].+alpha.*inputencodingvector2[:]));
 
-
-        activity=activity.*(1-dt/tau).+dt/tau.*complexactivation.(neuronsencodingvector*((1-epsilon).*D*activity[:].+alpha.*inputencodingvector2[:]));
+        # activity=activity.*(1-dt/tau).+dt/tau.*complexactivation.(neuronsencodingvector*((1-epsilon).*D*activity[:].+alpha.*inputencodingvector2[:]));
 
 
     global t
@@ -336,8 +328,6 @@ while t<delayend*tau
             plot(coordstates[:,indexinput2][1].+radius.*cos.(theta),coordstates[:,indexinput2][2].+radius.*sin.(theta),linewidth=2,color=[250/255,128/255,114/255])
             plot(coordstates[:,indexinput1][1].+radius.*cos.(theta),coordstates[:,indexinput1][2].+radius.*sin.(theta),linewidth=2,color=[169/255,169/255,169/255])
             savefig("/Users/pmxct2/Documents/FMD-Gerstner/Activity_$(q)_$(k)_$(g)_$(alpha)_$(freeparameter)_$(epsilon)_$(sigma).png")
-     
-            clf()
             close()
     end
     global k 
