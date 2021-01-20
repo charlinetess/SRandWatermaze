@@ -12,8 +12,6 @@ end
 
 
 
-
-
 R= 100; # Radius of the circle in cm
 r=5;# Radius of the platform  in cm
 # parameters :

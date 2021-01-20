@@ -1,3 +1,4 @@
+# This produces a plot showing the scalar product between every neuron and the neuron defined as "indexneuroncenter"
 
 using PyPlot
 using Colors
