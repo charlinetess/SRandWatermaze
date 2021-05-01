@@ -214,6 +214,8 @@ D=(pseudoinv*inputsencodingvector')'
 #indexplatform=rand(1:length(Xplatform));
 indexstart=4;
 indexplatform=5;
+indexvectors=[1 2 3 4 5];
+
 # find index of the first input state = the nearest state of the official starting points 
 indexinput1=findall((minimum(sum((coordstates-repeat(vcat(Xstart[indexstart], Ystart[indexstart]),1,size(coordstates,2))).^2,dims=1)).==sum((coordstates-repeat(vcat(Xstart[indexstart], Ystart[indexstart]),1,size(coordstates,2))).^2,dims=1))[:]);
 # find index of the second input state = the nearest state of the official platform point  
