@@ -216,7 +216,7 @@ pleft=[];
 for i=1:length(TimePower)
 p1,=plot(1:1:NumberEigen,eigenvaluesbis[1:NumberEigen].^TimePower[i],label=latexstring("t^{$(TimePower[i])}"),color=colors[i],"-",lw=3)
 p2,=plot(1:1:NumberEigen,eigenvaluesbis2[1:NumberEigen].^TimePower[i],label=latexstring("t^{$(TimePower[i])}"),color=colors[i],":",lw=3,alpha=0.8)
-push!(pright,p1)
+push!(pright,p1) # need to push into the same object to be recognised in the legend 
 push!(pleft,p2)
 end
 p5, = plot([0], marker="None",
